@@ -578,7 +578,7 @@ const lightBlock=t=>t&&BL[t].s&&!BL[t].tr&&!BL[t].leaf;
 // Modelo de luz por voxel: níveis inteiros 0..15, como no Minecraft.
 // A propagação é feita em lotes pequenos por frame para não bloquear o jogo.
 const LIGHT_DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-const lightWorkChunks=[[],[],[]],lightResetKeys=[new Set(),new Set(),new Set()],lightResetJobs=[null,null,null];
+const lightWorkChunks=[[],[],[]],lightResetKeys=[new Set(),new Set(),new Set()],lightResetJobs=[null,null,null],lightIncrementalJobs=[null,null,null];
 
 // Atenuação de luz dos blocos: valores do Minecraft Bedrock 1.21.0.
 // 0 = não atenua; 1-14 = atenua parcialmente; 15 = bloqueia.
