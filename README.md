@@ -317,9 +317,39 @@ layout(location=0) in vec3 p;layout(location=1) in vec2 uv;layout(location=2) in
 uniform mat4 M;uniform vec3 eye;out vec2 vuv;out vec3 vc;out vec2 vl;out float vd;
 void main(){gl_Position=M*vec4(p,1.);vuv=uv;vc=col;vl=lt;vd=length(p-eye);}`;
 const FS=`#version 300 es
-precision mediump float;in vec2 vuv;in vec3 vc;in vec2 vl;in float vd;uniform sampler2D T;uniform float day,fn,ff,amb;uniform vec3 fog;out vec4 o;
-float lightCurve(float l){l=clamp(l,0.,1.);return l/(4.0-3.0*l);}
-void main(){vec4 t=texture(T,vuv);if(t.a<.05)discard;float sky=lightCurve(vl.x*day);float block=lightCurve(vl.y);vec3 skyColor=vec3(.91,.96,1.0)*sky;vec3 blockColor=vec3(1.0,.82,.62)*block;vec3 light=max(min(vec3(1.0),skyColor+blockColor),vec3(amb));vec3 c=t.rgb*vc*light;float f=clamp((vd-fn)/(ff-fn),0.,1.);o=vec4(mix(c,fog,f),t.a);}`;
+precision mediump float;
+in vec2 vuv;in vec3 vc;in vec2 vl;in float vd;
+uniform sampler2D T;
+uniform float day,fn,ff,amb,sunrise,rain;
+uniform vec3 fog;
+out vec4 o;
+
+// Curva clássica aproximada, calibrada pelos níveis documentados.
+float bedrockCurve(float l){
+ l=clamp(l,0.0,1.0);
+ return pow(l,1.18);
+}
+void main(){
+ vec4 t=texture(T,vuv);if(t.a<.05)discard;
+ float daylight=clamp(day,0.0,1.0);
+ float skyLevel=bedrockCurve(vl.x);
+ float skyNight=.05+.12*skyLevel;
+ float skyDay=.05+.93*skyLevel;
+ float sky=mix(skyNight,skyDay,daylight);
+ float block=bedrockCurve(vl.y);
+ vec3 nightColor=vec3(.58,.68,.94);
+ vec3 dayColor=vec3(.98,.99,1.0);
+ vec3 skyColor=mix(nightColor,dayColor,daylight);
+ skyColor=mix(skyColor,vec3(1.0,.58,.30),clamp(sunrise,0.0,1.0)*.48);
+ skyColor=mix(skyColor,vec3(.72,.76,.80),clamp(rain,0.0,1.0)*.42);
+ vec3 blockColor=vec3(1.0,.72,.46);
+ vec3 light=skyColor*sky+blockColor*block;
+ light=max(light,vec3(amb));
+ light=min(light,vec3(1.0));
+ vec3 c=t.rgb*vc*light;
+ float f=clamp((vd-fn)/(ff-fn),0.0,1.0);
+ o=vec4(mix(c,fog,f),t.a);
+}`;skyColor=vec3(.91,.96,1.0)*sky;vec3 blockColor=vec3(1.0,.82,.62)*block;vec3 light=max(min(vec3(1.0),skyColor+blockColor),vec3(amb));vec3 c=t.rgb*vc*light;float f=clamp((vd-fn)/(ff-fn),0.,1.);o=vec4(mix(c,fog,f),t.a);}`;
 function shd(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(x));return x}
 const prog=gl.createProgram();gl.attachShader(prog,shd(gl.VERTEX_SHADER,VS));gl.attachShader(prog,shd(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
 const U={};for(const n of['M','eye','T','day','fn','ff','fog','amb'])U[n]=gl.getUniformLocation(prog,n);
