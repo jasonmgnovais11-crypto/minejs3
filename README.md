@@ -2086,7 +2086,20 @@ function render(now){
  if(under){const q=.3+dayF*.7;fogc=[.08*q,.2*q,.5*q];fn=0;ff=22}if(lava){fogc=[.8,.25,.05];fn=0;ff=3}
  gl.clearColor(fogc[0],fogc[1],fogc[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  const asp=gc.width/gc.height,fov=(FOVB+(P.sprint?10:0))*Math.PI/180,M=mul(persp(fov,asp,.08,600),look(cam,cdir));
- gl.useProgram(prog);bindUnit(0,tex);gl.uniformMatrix4fv(U.M,false,new Float32Array(M));gl.uniform3f(U.eye,cam[0],cam[1],cam[2]);const skyFactor=P.fx.nv?1:(dim==1?0:(dim==2?.16:(.035+.965*dayF)));gl.uniform1f(U.day,skyFactor);gl.uniform1f(U.amb,P.fx.nv?.72:(dim==2?.025:.012));gl.uniform3f(U.fog,fogc[0],fogc[1],fogc[2]);
+gl.useProgram(prog);
+bindUnit(0,tex);
+gl.uniformMatrix4fv(U.M,false,new Float32Array(M));
+gl.uniform3f(U.eye,cam[0],cam[1],cam[2]);
+
+const skyFactor=P.fx.nv?1:(dim==0?dayF:0);
+const sunrise=dim==0?Math.max(0,1-Math.abs(sa)/.30):0;
+const rain=dim==0&&weather?(weather==2?1:.65):0;
+
+gl.uniform1f(U.day,skyFactor);
+gl.uniform1f(U.amb,P.fx.nv?.72:(dim==1?.25:.05));
+gl.uniform1f(U.sunrise,sunrise);
+gl.uniform1f(U.rain,rain);
+gl.uniform3f(U.fog,fogc[0],fogc[1],fogc[2]);
  gl.disable(gl.DEPTH_TEST);gl.uniform1f(U.fn,1e8);gl.uniform1f(U.ff,2e8);
  if(!under&&!lava&&dim==0)for(const[sg_,c]of[[1,[1,.95,.6]],[-1,[.85,.9,1]]]){let dx=Math.cos(tod*6.2832)*sg_,dy=sa*sg_,dz=.3*sg_;const l=Math.hypot(dx,dy,dz);dx/=l;dy/=l;dz/=l;
   if(dy<-.15)continue;let rx=dz,rz=-dx;const rl=Math.hypot(rx,rz)||1;rx/=rl;rz/=rl;const ux=-dy*rz,uy=dx*rz-dz*rx,uz=dy*rx,ul=Math.hypot(ux,uy,uz)||1;
