@@ -352,7 +352,7 @@ void main(){
 }`;skyColor=vec3(.91,.96,1.0)*sky;vec3 blockColor=vec3(1.0,.82,.62)*block;vec3 light=max(min(vec3(1.0),skyColor+blockColor),vec3(amb));vec3 c=t.rgb*vc*light;float f=clamp((vd-fn)/(ff-fn),0.,1.);o=vec4(mix(c,fog,f),t.a);}`;
 function shd(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(x));return x}
 const prog=gl.createProgram();gl.attachShader(prog,shd(gl.VERTEX_SHADER,VS));gl.attachShader(prog,shd(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
-const U={};for(const n of['M','eye','T','day','fn','ff','fog','amb'])U[n]=gl.getUniformLocation(prog,n);
+const U={};for(const n of['M','eye','T','day','fn','ff','fog','amb','sunrise','rain'])U[n]=gl.getUniformLocation(prog,n);
 function mkTex(unit){const t=gl.createTexture();gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t}
