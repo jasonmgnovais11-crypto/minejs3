@@ -842,17 +842,54 @@ const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 function vertexLight(x,y,z,face,corner,readLight=lightCell,readOpaque=null){
  const d=DIRS[face],base=[x+d[0],y+d[1],z+d[2]],tang=face<2?[1,2]:face<4?[0,2]:[0,1];
  const a=tang[0],b=tang[1],sa=corner[a]>=.5?1:-1,sb=corner[b]>=.5?1:-1;
- const cells=[base,base.slice(),base.slice(),base.slice()];cells[1][a]+=sa;cells[2][b]+=sb;cells[3][a]+=sa;cells[3][b]+=sb;
- let sky=0,block=0;for(const q of cells){const l=readLight(q[0],q[1],q[2]);sky+=l[0];block+=l[1]}
- const opaque=q=>{if(q[1]<0)return true;if(q[1]>=H)return false;const c=chunkAt(q[0],q[2]);if(!c)return false;const i=(q[0]&15)+16*((q[2]&15)+16*q[1]);return lightOpacity(c.d[i])>=15};
- const opaqueAt=(q)=>readOpaque?readOpaque(q[0],q[1],q[2]):opaque(q);
- const a1=opaqueAt(cells[1]),a2=opaqueAt(cells[2]),a3=opaqueAt(cells[3]);
- const ao=a1&&a2?.58:1-(Number(a1)+Number(a2)+Number(a3))*.14;
+
+ const cells=[
+  base,
+  base.slice(),
+  base.slice(),
+  base.slice()
+ ];
+
+ cells[1][a]+=sa;
+ cells[2][b]+=sb;
+ cells[3][a]+=sa;
+ cells[3][b]+=sb;
+
+ let sky=0,block=0;
+
+ for(const q of cells){
+  const l=readLight(q[0],q[1],q[2]);
+  sky+=l[0];
+  block+=l[1];
+ }
+
+ const opaque=q=>{
+  if(q[1]<0)return true;
+  if(q[1]>=H)return false;
+  const c=chunkAt(q[0],q[2]);
+  if(!c)return false;
+  const i=(q[0]&15)+16*((q[2]&15)+16*q[1]);
+  return lightOpacity(c.d[i])>=15;
+ };
+
+ const opaqueAt=q=>readOpaque
+  ?readOpaque(q[0],q[1],q[2])
+  :opaque(q);
+
+ const a1=opaqueAt(cells[1]);
+ const a2=opaqueAt(cells[2]);
+ const a3=opaqueAt(cells[3]);
+const tl=q[6]!==undefined?q[6]:(b.faceTex?b.faceTex(meta,f,bx+x,y,bz+z):(b.ttop&&f==2?b.ttop(meta):(b.tmeta?b.tmeta(meta):(f==2?b.t[0]:f==3?b.t[1]:b.t[2])))),sh=SHD[f]*.92,base=T?tn:on_;
+ const ao=a1&&a2
+  ?.55
+  :1-(Number(a1)+Number(a2)+Number(a3))*.15;
+
  return[sky*.25,block*.25,ao];
-}
+const li=vertexLight(bx+x,y,bz+z,f,[px,py,pz],readLight,readOpaque),shade=(b.emit||b.em)?1:sh*li[2];aoV.push(li[2]);
 const FC=[[[1,0,1],[1,0,0],[1,1,0],[1,1,1]],[[0,0,0],[0,0,1],[0,1,1],[0,1,0]],[[0,1,1],[1,1,1],[1,1,0],[0,1,0]],[[0,0,0],[1,0,0],[1,0,1],[0,0,1]],[[0,0,1],[1,0,1],[1,1,1],[0,1,1]],[[1,0,0],[0,0,0],[0,1,0],[1,1,0]]];
 const CROSS=[[[0,0,0],[1,0,1],[1,1,1],[0,1,0]],[[1,0,0],[0,0,1],[0,1,1],[1,1,0]]];
-const SHD=[.82,.82,1,.5,.68,.68],UVC=[[0,1],[1,1],[1,0],[0,0]],AOF=[.5,.68,.84,1];
+// Direções: leste, oeste, cima, baixo, sul, norte.
+const SHD=[.68,.68,1,.5,.82,.82],UVC=[[0,1],[1,1],[1,0],[0,0]],AOF=[.5,.68,.84,1];
 const TINT=Array.from({length:67},(_,i)=>i==4||i>=33&&i<=35?[.8,.72,.38]:i==2||i==3||i==16||i==26||i==27?[.86,.91,.98]:i==5||i==6?[.32,.58,.36]:i==12?[.76,.8,.74]:i==13?[.66,.63,.54]:i==14?[.95,.62,.72]:i>=15&&i<=18?[.42,.62,.38]:i>=19&&i<=21?[.34,.72,.24]:i>=56&&i<=60?[.65,.38,.3]:i>=61?[.5,.5,.5]:[.55,.82,.33]);
 const tu=(t,u)=>((t&(TPR-1))+.004+u*.992)/TPR,tv=(t,v)=>((t/TPR|0)+.004+v*.992)/TPR;
 function meshChunk(c){
@@ -864,8 +901,19 @@ function meshChunk(c){
  const ov=[],oi=[],tvv=[],ti=[];let on_=0,tn=0;const bx=c.cx*16,bz=c.cz*16;
  const lightGrid=c.lightGrid&&c.lightGrid.length===18*18*(H+2)*2?c.lightGrid:(c.lightGrid=new Uint8Array(18*18*(H+2)*2));
  const opacityGrid=c.opacityGrid&&c.opacityGrid.length===18*18*(H+2)?c.opacityGrid:(c.opacityGrid=new Uint8Array(18*18*(H+2)));
- for(let ly=-1;ly<=H;ly++)for(let lz=-1;lz<=16;lz++)for(let lx=-1;lx<=16;lx++){
-  let sky=0,block=0,opaque=ly<0?1:0;
+ const aoV=[];
+for(let k=0;k<4;k++){
+ const cc=FC[f][k];
+ const li=vertexLight(bx+x,y,bz+z,f,cc,readLight,readOpaque);
+ const s=(b.emit||b.em)?1:SHD[f]*li[2];
+ aoV.push(li[2]);
+ V.push(
+  bx+x+cc[0],y+cc[1],bz+z+cc[2],
+  tu(tl,UVC[k][0]),tv(tl,UVC[k][1]),
+  tn_[0]*s,tn_[1]*s,tn_[2]*s,
+  li[0],li[1]
+ );
+}
   if(ly>=H)sky=dim===1?0:15;
   else if(ly>=0){const lc=chunkAt(bx+lx,bz+lz);if(lc&&lc.sl){const li=((bx+lx)&15)+16*(((bz+lz)&15)+16*ly);sky=lc.sl[li];block=lc.bl[li];opaque=lightOpacity(lc.d[li])>=15?1:0}}
   const cell=(lx+1)+18*((lz+1)+18*(ly+1)),gi=cell*2;lightGrid[gi]=sky;lightGrid[gi+1]=block;opacityGrid[cell]=opaque;
