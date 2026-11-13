@@ -549,17 +549,95 @@ const lightBlock=t=>t&&BL[t].s&&!BL[t].tr&&!BL[t].leaf;
 // A propagação é feita em lotes pequenos por frame para não bloquear o jogo.
 const LIGHT_DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 const lightWorkChunks=[[],[],[]],lightResetKeys=[new Set(),new Set(),new Set()],lightResetJobs=[null,null,null];
+
+// Atenuação de luz dos blocos: valores do Minecraft Bedrock 1.21.0.
+// 0 = não atenua; 1-14 = atenua parcialmente; 15 = bloqueia.
+// O padrão oficial é 15.
+
+for(const b of BL){
+ if(b)b.lightDampening=15;
+}
+
+const setLightDampening=(ids,value)=>{
+ for(const id of ids){
+  if(id!==undefined&&BL[id]){
+   BL[id].lightDampening=value;
+  }
+ }
+};
+
+// Blocos com atenuação 0.
+setLightDampening([
+ 0,14,19,
+ B.glass_pane,
+ B.iron_bars,
+ B.sapling,
+ B.bamboo_shoot,
+ B.torch,
+ B.tallgrass,
+ B.dandelion,
+ B.poppy,
+ B.deadbush,
+ B.bed,
+ B.chest,
+ B.farmland,
+ B.wheat,
+ B.rs_wire,
+ B.lever,
+ B.button,
+ B.plate,
+ B.rtorch,
+ B.rtorch_off,
+ B.portal,
+ B.ladder,
+ B.pistonhead,
+ B.wall_cobble,
+ B.wall_mossy
+],0);
+
+// Todas as folhas: valor 1.
+for(const k of Object.keys(B)){
+ if(k.endsWith('_leaves')){
+  setLightDampening([B[k]],1);
+ }
+}
+
+// Água: valor 2.
+setLightDampening([10],2);
+
+// Gelo normal: valor 3.
+setLightDampening([13],3);
+
+// Mudas e famílias de blocos transparentes.
+setLightDampening(
+ Object.keys(B)
+  .filter(k=>k.endsWith('_sapling'))
+  .map(k=>B[k]),
+ 0
+);
+
+// Portas, alçapões, cercas, portões, botões,
+// placas e placas suspensas de madeira.
+for(const k of Object.keys(B)){
+ if(/^(fence_|gate_|button_|plate_|sign_|hanging_sign_|door_|trap_)/.test(k)){
+  setLightDampening([B[k]],0);
+ }
+}
+
+// Todas as lajes e escadas existentes.
+setLightDampening(
+ [...Object.values(SLAB),...Object.values(STAIR)],
+ 0
+);
+
+// Atenuação oficial consultada pelo sistema de iluminação.
 function lightOpacity(id,kind=0){
  if(!id)return 0;
- const b=BL[id];if(!b)return 15;
- // No Java, água, folhas, gelo e lava filtram luz do céu,
- // mas não recebem uma penalidade extra na propagação da luz de bloco.
- if(b.liq)return kind===0&&(id==10||id==26)?1:0;
- if(b.leaf)return kind===0?1:0;
- if(id==13||id==B.packed_ice)return kind===0?1:0;
- if(b.cross||b.portal||b.tr||b.nocol)return 0;
- // Formas parciais deixam a luz de bloco passar; no céu recebem atenuação leve.
- if(b.box)return b.s?(kind===0?1:0):0;
+ const b=BL[id];
+ if(!b)return 15;
+ return b.lightDampening;
+}
+
  return b.s?15:0;
 }
 function lightEmission(id){
