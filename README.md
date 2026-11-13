@@ -744,50 +744,395 @@ function initChunkLighting(c){
  for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){const n=chunks.get((c.cx+dx)+','+(c.cz+dz));if(n)seedBorderPair(c,n,dx,dz)}
  c.lightPending=false;
 }
-function scheduleLightingReset(cx,cz){lightResetKeys[dim].add(cx+','+cz)}
-function beginLightingReset(){
- const keys=lightResetKeys[dim],job=lightResetJobs[dim];if(job||!keys.size)return;
- const first=keys.values().next().value;keys.delete(first);const[cx,cz]=first.split(',').map(Number),region=[];
- for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){const k=(cx+dx)+','+(cz+dz),c=chunks.get(k);if(c){region.push(c);keys.delete(k)}}
- if(!region.length)return;
- const affected=new Set(region),work=lightWorkChunks[dim];
- for(let i=work.length-1;i>=0;i--)if(affected.has(work[i]))work.splice(i,1);
- for(const c of region){c.lightQueue=[];c.lightHead=0;c.lightQueued=false;c.lightPending=true;if(c.lqs)c.lqs.fill(0);if(c.lqb)c.lqb.fill(0)}
- lightResetJobs[dim]={region,stage:0,index:0};
-}
-function processLightingReset(){
- if(!lightResetJobs[dim])beginLightingReset();const j=lightResetJobs[dim];if(!j)return;
- if(j.stage===0){prepareChunkLightData(j.region[j.index++]);if(j.index>=j.region.length){j.stage=1;j.index=0}}
- else if(j.stage===1){seedChunkLight(j.region[j.index++]);if(j.index>=j.region.length){j.stage=2;j.index=0}}
- else{
-  const c=j.region[j.index++];for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){const n=chunks.get((c.cx+dx)+','+(c.cz+dz));if(n&&!j.region.includes(n))seedBorderPair(c,n,dx,dz)}
-  if(j.index>=j.region.length){for(const q of j.region)q.lightPending=false;lightResetJobs[dim]=null}
+
+function scheduleLightingReset(cx,cz){
+ lightResetKeys[dim].add(cx+','+cz);
+
+ for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+  const c=chunks.get((cx+dx)+','+(cz+dz));
+  if(c)c.lightPending=true;
  }
 }
-function processLighting(budget=600){
- if(lightResetJobs[dim])return;
+
+function beginLightingReset(){
+ const keys=lightResetKeys[dim];
+ if(lightResetJobs[dim]||!keys.size)return;
+
+ const first=keys.values().next().value;
+ keys.delete(first);
+
+ const[cx,cz]=first.split(',').map(Number);
+ const region=[];
+
+ // A região cobre a distância máxima de propagação da luz.
+ for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+  const k=(cx+dx)+','+(cz+dz);
+  const c=chunks.get(k);
+
+  if(c){
+   region.push(c);
+   keys.delete(k);
+  }
+ }
+
+ if(!region.length)return;
+
+ const ids=new Map();
  const work=lightWorkChunks[dim];
- while(budget>0&&work.length){
-  const c=work.shift();
-  if(chunks.get(c.cx+','+c.cz)!==c){c.lightQueue=[];c.lightHead=0;c.lightQueued=false;continue}
-  const start=c.lightHead,end=Math.min(c.lightQueue.length,start+Math.min(96,budget));
-  while(c.lightHead<end){
-   const code=c.lightQueue[c.lightHead++],kind=code&1,i=code>>1;
-   (kind?c.lqb:c.lqs)[i]=0;
-   const level=(kind?c.bl:c.sl)[i];if(level<=1)continue;
-   const x=i&15,z=(i>>4)&15,y=i>>8,wx=c.cx*16+x,wz=c.cz*16+z;
-   for(const d of LIGHT_DIRS){const nx=wx+d[0],ny=y+d[1],nz=wz+d[2];if(ny<0||ny>=H)continue;
-    const nc=chunkAt(nx,nz);if(!nc||!nc.sl)continue;
-    const ni=(nx&15)+16*((nz&15)+16*ny),op=lightOpacity(nc.d[ni],kind);if(op>=15)continue;
-    const next=level-Math.max(1,op),dst=kind?nc.bl:nc.sl;
-    if(next>dst[ni]){dst[ni]=next;nc.dirty=true;enqueueLight(nc,ni,kind)}
+
+ for(let i=work.length-1;i>=0;i--){
+  if(region.includes(work[i]))work.splice(i,1);
+ }
+
+ for(let ci=0;ci<region.length;ci++){
+  const c=region[ci];
+  ids.set(c,ci);
+
+  // Buffers novos. c.sl e c.bl continuam sendo usados na tela.
+  c.nextSl=new Uint8Array(c.d.length);
+  c.nextBl=new Uint8Array(c.d.length);
+  c.nqs=new Uint8Array(c.d.length);
+  c.nqb=new Uint8Array(c.d.length);
+
+  c.lightQueue=[];
+  c.lightHead=0;
+  c.lightQueued=false;
+  c.lightPending=true;
+
+  if(c.lqs)c.lqs.fill(0);
+  if(c.lqb)c.lqb.fill(0);
+ }
+
+ lightResetJobs[dim]={
+  region,ids,
+  stage:0,
+  chunk:0,
+  column:0,
+  index:0,
+  queue:[],
+  head:0
+ };
+}
+
+function lightJobPush(j,ci,i,kind){
+ const c=j.region[ci];
+ const flags=kind?c.nqb:c.nqs;
+
+ if(flags[i])return;
+
+ flags[i]=1;
+ j.queue.push((((ci*c.d.length+i)<<1)|kind));
+}
+
+function processLightingReset(){
+ if(!lightResetJobs[dim])beginLightingReset();
+
+ const j=lightResetJobs[dim];
+ if(!j)return;
+
+ // FASE 1: calcular a luz solar direta.
+ if(j.stage===0){
+  let budget=128;
+
+  while(budget-->0&&j.chunk<j.region.length){
+   const c=j.region[j.chunk];
+   const x=j.column&15;
+   const z=j.column>>4;
+
+   let level=dim===1?0:15;
+
+   for(let y=H-1;y>=0;y--){
+    const i=x+16*(z+16*y);
+    const op=lightOpacity(c.d[i],0);
+
+    if(op>=15)level=0;
+    else if(op>0)level=Math.max(0,level-op);
+
+    c.nextSl[i]=level;
+   }
+
+   j.column++;
+
+   if(j.column>=256){
+    j.column=0;
+    j.chunk++;
    }
   }
-  budget-=end-start;
-  if(c.lightHead>=c.lightQueue.length){c.lightQueue=[];c.lightHead=0;c.lightQueued=false}
-  else work.push(c);
+
+  if(j.chunk>=j.region.length){
+   j.stage=1;
+   j.chunk=0;
+   j.index=0;
+  }
+
+  return;
+ }
+
+ // FASE 2: identificar fontes e pontos de propagação.
+ if(j.stage===1){
+  let budget=12000;
+
+  while(budget-->0&&j.chunk<j.region.length){
+   const c=j.region[j.chunk];
+   const ci=j.chunk;
+   const i=j.index++;
+
+   if(i>=c.d.length){
+    j.chunk++;
+    j.index=0;
+    continue;
+   }
+
+   const x=i&15;
+   const z=(i>>4)&15;
+   const y=i>>8;
+   const wx=c.cx*16+x;
+   const wz=c.cz*16+z;
+
+   const emission=lightEmission(c.d[i]);
+
+   if(emission){
+    c.nextBl[i]=emission;
+    lightJobPush(j,ci,i,1);
+   }
+
+   for(let kind=0;kind<2;kind++){
+    const map=kind?c.nextBl:c.nextSl;
+    const level=map[i];
+
+    if(level<=1)continue;
+
+    let canSpread=false;
+
+    for(const d of LIGHT_DIRS){
+     const nx=wx+d[0];
+     const ny=y+d[1];
+     const nz=wz+d[2];
+
+     if(ny<0||ny>=H)continue;
+
+     const nc=chunkAt(nx,nz);
+     if(!nc||!nc.sl)continue;
+
+     const ni=(nx&15)+16*((nz&15)+16*ny);
+     const op=lightOpacity(nc.d[ni],kind);
+
+     if(op>=15)continue;
+
+     const next=level-Math.max(1,op);
+     const nci=j.ids.get(nc);
+
+     if(nci!==undefined){
+      const target=kind?nc.nextBl:nc.nextSl;
+      if(next>target[ni])canSpread=true;
+     }else{
+      const external=kind?nc.bl[ni]:nc.sl[ni];
+      const candidate=external-Math.max(1,lightOpacity(c.d[i],kind));
+
+      if(candidate>map[i]){
+       map[i]=candidate;
+       canSpread=true;
+      }
+     }
+    }
+
+    if(canSpread)lightJobPush(j,ci,i,kind);
+   }
+  }
+
+  if(j.chunk>=j.region.length){
+   j.stage=2;
+   j.head=0;
+  }
+
+  return;
+ }
+
+ // FASE 3: propagar luz dentro da região temporária.
+ if(j.stage===2){
+  let budget=10000;
+
+  while(budget-->0&&j.head<j.queue.length){
+   const code=j.queue[j.head++];
+   const p=code>>1;
+   const kind=code&1;
+   const n=j.region[0].d.length;
+
+   const ci=Math.floor(p/n);
+   const i=p-ci*n;
+   const c=j.region[ci];
+
+   (kind?c.nqb:c.nqs)[i]=0;
+
+   const map=kind?c.nextBl:c.nextSl;
+   const level=map[i];
+
+   if(level<=1)continue;
+
+   const x=i&15;
+   const z=(i>>4)&15;
+   const y=i>>8;
+   const wx=c.cx*16+x;
+   const wz=c.cz*16+z;
+
+   for(const d of LIGHT_DIRS){
+    const nx=wx+d[0];
+    const ny=y+d[1];
+    const nz=wz+d[2];
+
+    if(ny<0||ny>=H)continue;
+
+    const nc=chunkAt(nx,nz);
+    if(!nc||!nc.sl)continue;
+
+    const nci=j.ids.get(nc);
+    if(nci===undefined)continue;
+
+    const ni=(nx&15)+16*((nz&15)+16*ny);
+    const op=lightOpacity(nc.d[ni],kind);
+
+    if(op>=15)continue;
+
+    const next=level-Math.max(1,op);
+    const target=kind?nc.nextBl:nc.nextSl;
+
+    if(next>target[ni]){
+     target[ni]=next;
+     lightJobPush(j,nci,ni,kind);
+    }
+   }
+  }
+
+  if(j.head>=j.queue.length){
+   // Reinicia somente se houve outra edição dentro desta região.
+   const changedAgain=j.region.some(c=>
+    lightResetKeys[dim].has(c.cx+','+c.cz)
+   );
+
+   if(changedAgain){
+    for(const c of j.region){
+     c.nextSl=null;
+     c.nextBl=null;
+     c.nqs=null;
+     c.nqb=null;
+     c.lightPending=false;
+    }
+
+    lightResetJobs[dim]=null;
+    beginLightingReset();
+    return;
+   }
+
+   // FASE 4: troca os mapas de uma só vez.
+   for(const c of j.region){
+    let changed=false;
+
+    for(let i=0;i<c.d.length;i++){
+     if(c.sl[i]!==c.nextSl[i]||c.bl[i]!==c.nextBl[i]){
+      changed=true;
+      break;
+     }
+    }
+
+    c.sl=c.nextSl;
+    c.bl=c.nextBl;
+
+    c.nextSl=null;
+    c.nextBl=null;
+    c.nqs=null;
+    c.nqb=null;
+
+    c.lightQueue=[];
+    c.lightHead=0;
+    c.lightQueued=false;
+
+    if(c.lqs)c.lqs.fill(0);
+    if(c.lqb)c.lqb.fill(0);
+
+    if(changed)c.dirty=true;
+    c.lightPending=false;
+   }
+
+   lightResetJobs[dim]=null;
+  }
  }
 }
+
+function processLighting(budget=2500){
+ if(lightResetJobs[dim])return;
+
+ const work=lightWorkChunks[dim];
+
+ while(budget>0&&work.length){
+  const c=work.shift();
+
+  if(chunks.get(c.cx+','+c.cz)!==c){
+   c.lightQueue=[];
+   c.lightHead=0;
+   c.lightQueued=false;
+   continue;
+  }
+
+  const start=c.lightHead;
+  const end=Math.min(
+   c.lightQueue.length,
+   start+Math.min(96,budget)
+  );
+
+  while(c.lightHead<end){
+   const code=c.lightQueue[c.lightHead++];
+   const kind=code&1;
+   const i=code>>1;
+
+   (kind?c.lqb:c.lqs)[i]=0;
+
+   const level=(kind?c.bl:c.sl)[i];
+   if(level<=1)continue;
+
+   const x=i&15;
+   const z=(i>>4)&15;
+   const y=i>>8;
+   const wx=c.cx*16+x;
+   const wz=c.cz*16+z;
+
+   for(const d of LIGHT_DIRS){
+    const nx=wx+d[0];
+    const ny=y+d[1];
+    const nz=wz+d[2];
+
+    if(ny<0||ny>=H)continue;
+
+    const nc=chunkAt(nx,nz);
+    if(!nc||!nc.sl)continue;
+
+    const ni=(nx&15)+16*((nz&15)+16*ny);
+    const op=lightOpacity(nc.d[ni],kind);
+
+    if(op>=15)continue;
+
+    const next=level-Math.max(1,op);
+    const dst=kind?nc.bl:nc.sl;
+
+    if(next>dst[ni]){
+     dst[ni]=next;
+     nc.dirty=true;
+     enqueueLight(nc,ni,kind);
+    }
+   }
+  }
+
+  budget-=end-start;
+
+  if(c.lightHead>=c.lightQueue.length){
+   c.lightQueue=[];
+   c.lightHead=0;
+   c.lightQueued=false;
+  }else{
+   work.push(c);
+  }
+ }
+}
+
 function lightCell(x,y,z){
  if(y<0)return[0,0];if(y>=H)return[dim===1?0:1,0];
  const c=chunkAt(x,z);if(!c||!c.sl)return[0,0];const i=(x&15)+16*((z&15)+16*y);
