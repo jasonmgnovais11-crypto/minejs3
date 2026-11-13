@@ -2479,7 +2479,7 @@ function update(dt,now){
  if(!spawned){if(pend)resolvePend();else placeSpawn()}
  const pcx=Math.floor(P.x/16),pcz=Math.floor(P.z/16);let g=0,me=0;
  for(const[dx,dz]of ORDER){const dd=dx*dx+dz*dz;if(dd>(RD+1)*(RD+1))break;const cx=pcx+dx,cz=pcz+dz,k=cx+','+cz;if(!chunks.has(k)&&g<3){const c=genChunk(cx,cz);chunks.set(k,c);initChunkLighting(c);g++}else{const c=chunks.get(k);if(c&&!c.sl)initChunkLighting(c)}}
- processLightingReset();processLighting(450);
+processLightingReset();processLighting(2500);
  for(const[dx,dz]of ORDER){if(dx*dx+dz*dz>RD*RD)break;const c=chunks.get((pcx+dx)+','+(pcz+dz));if(c&&c.dirty&&!c.lightPending&&hasNb(c)){meshChunk(c);if(++me>=2)break}}
  if(Math.floor(now/1000)!=Math.floor((now-dt*1000)/1000))for(const[k,c]of chunks)if((c.cx-pcx)**2+(c.cz-pcz)**2>(RD+3)**2){freeMesh(c.mo);freeMesh(c.mt);const w=lightWorkChunks[dim],qi=w.indexOf(c);if(qi>=0)w.splice(qi,1);chunks.delete(k)}
  if(!spawned)return;
