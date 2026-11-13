@@ -637,9 +637,6 @@ function lightOpacity(id,kind=0){
  if(!b)return 15;
  return b.lightDampening;
 }
-
- return b.s?15:0;
-}
 function lightEmission(id){
  if(!id)return 0;
  if(id==26)return 15;                         // lava
