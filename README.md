@@ -349,7 +349,7 @@ void main(){
  vec3 c=t.rgb*vc*light;
  float f=clamp((vd-fn)/(ff-fn),0.0,1.0);
  o=vec4(mix(c,fog,f),t.a);
-}`;skyColor=vec3(.91,.96,1.0)*sky;vec3 blockColor=vec3(1.0,.82,.62)*block;vec3 light=max(min(vec3(1.0),skyColor+blockColor),vec3(amb));vec3 c=t.rgb*vc*light;float f=clamp((vd-fn)/(ff-fn),0.,1.);o=vec4(mix(c,fog,f),t.a);}`;
+}`;
 function shd(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(x));return x}
 const prog=gl.createProgram();gl.attachShader(prog,shd(gl.VERTEX_SHADER,VS));gl.attachShader(prog,shd(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
 const U={};for(const n of['M','eye','T','day','fn','ff','fog','amb','sunrise','rain'])U[n]=gl.getUniformLocation(prog,n);
