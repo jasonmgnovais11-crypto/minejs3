@@ -691,18 +691,28 @@ function prepareChunkLightData(c){
  const n=c.d.length;
  if(!c.sl||c.sl.length!==n)c.sl=new Uint8Array(n);else c.sl.fill(0);
  if(!c.bl||c.bl.length!==n)c.bl=new Uint8Array(n);else c.bl.fill(0);
+ if(!c.sd||c.sd.length!==n)c.sd=new Uint8Array(n);else c.sd.fill(0);
  if(!c.lqs||c.lqs.length!==n)c.lqs=new Uint8Array(n);else c.lqs.fill(0);
  if(!c.lqb||c.lqb.length!==n)c.lqb=new Uint8Array(n);else c.lqb.fill(0);
  c.lightQueue=[];c.lightHead=0;c.lightQueued=false;c.lightPending=true;
- // Luz solar direta: 15 no céu aberto, atenuada por água e folhas, bloqueada por cubos opacos.
+
+ // Luz solar direta.
  if(dim!==1)for(let z=0;z<16;z++)for(let x=0;x<16;x++){
   let level=15;
-  for(let y=H-1;y>=0;y--){const i=x+16*(z+16*y),op=lightOpacity(c.d[i],0);
-   if(op>=15)level=0;else if(op>0)level=Math.max(0,level-op);
+  for(let y=H-1;y>=0;y--){
+   const i=x+16*(z+16*y),op=lightOpacity(c.d[i],0);
+   if(op>=15)level=0;
+   else if(op>0)level=Math.max(0,level-op);
+   c.sd[i]=level;
    c.sl[i]=level;
   }
  }
- for(let i=0;i<n;i++){const em=lightEmission(c.d[i]);if(em)c.bl[i]=em}
+
+ // Luz emitida por blocos.
+ for(let i=0;i<n;i++){
+  const em=lightEmission(c.d[i]);
+  if(em)c.bl[i]=em;
+ }
  c.dirty=true;
 }
 function lightNeighbor(c,i,dx,dy,dz){
