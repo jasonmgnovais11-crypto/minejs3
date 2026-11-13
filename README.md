@@ -842,7 +842,7 @@ function processLightingReset(){
 
  // FASE 1: calcular a luz solar direta.
  if(j.stage===0){
-  let budget=128;
+let budget=4096;
 
   while(budget-->0&&j.chunk<j.region.length){
    const c=j.region[j.chunk];
@@ -880,7 +880,7 @@ function processLightingReset(){
 
  // FASE 2: identificar fontes e pontos de propagação.
  if(j.stage===1){
-  let budget=12000;
+ let budget=200000;
 
   while(budget-->0&&j.chunk<j.region.length){
    const c=j.region[j.chunk];
@@ -960,7 +960,7 @@ function processLightingReset(){
 
  // FASE 3: propagar luz dentro da região temporária.
  if(j.stage===2){
-  let budget=10000;
+ let budget=100000;
 
   while(budget-->0&&j.head<j.queue.length){
    const code=j.queue[j.head++];
