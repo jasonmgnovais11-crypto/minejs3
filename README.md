@@ -839,24 +839,17 @@ function edit(x,y,z,id,meta=0){setBlock(x,y,z,id,meta);const cx=x>>4,cz=z>>4;for
  
 /* ================= MESH ================= */
 const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+
 function vertexLight(x,y,z,face,corner,readLight=lightCell,readOpaque=null){
  const d=DIRS[face],base=[x+d[0],y+d[1],z+d[2]],tang=face<2?[1,2]:face<4?[0,2]:[0,1];
  const a=tang[0],b=tang[1],sa=corner[a]>=.5?1:-1,sb=corner[b]>=.5?1:-1;
-
- const cells=[
-  base,
-  base.slice(),
-  base.slice(),
-  base.slice()
- ];
-
+ const cells=[base,base.slice(),base.slice(),base.slice()];
  cells[1][a]+=sa;
  cells[2][b]+=sb;
  cells[3][a]+=sa;
  cells[3][b]+=sb;
 
  let sky=0,block=0;
-
  for(const q of cells){
   const l=readLight(q[0],q[1],q[2]);
   sky+=l[0];
@@ -879,13 +872,13 @@ function vertexLight(x,y,z,face,corner,readLight=lightCell,readOpaque=null){
  const a1=opaqueAt(cells[1]);
  const a2=opaqueAt(cells[2]);
  const a3=opaqueAt(cells[3]);
-const tl=q[6]!==undefined?q[6]:(b.faceTex?b.faceTex(meta,f,bx+x,y,bz+z):(b.ttop&&f==2?b.ttop(meta):(b.tmeta?b.tmeta(meta):(f==2?b.t[0]:f==3?b.t[1]:b.t[2])))),sh=SHD[f]*.92,base=T?tn:on_;
  const ao=a1&&a2
-  ?.55
-  :1-(Number(a1)+Number(a2)+Number(a3))*.15;
+  ? .58
+  : 1-(Number(a1)+Number(a2)+Number(a3))*.14;
 
  return[sky*.25,block*.25,ao];
-const li=vertexLight(bx+x,y,bz+z,f,[px,py,pz],readLight,readOpaque),shade=(b.emit||b.em)?1:sh*li[2];aoV.push(li[2]);
+}
+
 const FC=[[[1,0,1],[1,0,0],[1,1,0],[1,1,1]],[[0,0,0],[0,0,1],[0,1,1],[0,1,0]],[[0,1,1],[1,1,1],[1,1,0],[0,1,0]],[[0,0,0],[1,0,0],[1,0,1],[0,0,1]],[[0,0,1],[1,0,1],[1,1,1],[0,1,1]],[[1,0,0],[0,0,0],[0,1,0],[1,1,0]]];
 const CROSS=[[[0,0,0],[1,0,1],[1,1,1],[0,1,0]],[[1,0,0],[0,0,1],[0,1,1],[1,1,0]]];
 // Direções: leste, oeste, cima, baixo, sul, norte.
