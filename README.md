@@ -894,22 +894,28 @@ function meshChunk(c){
  const ov=[],oi=[],tvv=[],ti=[];let on_=0,tn=0;const bx=c.cx*16,bz=c.cz*16;
  const lightGrid=c.lightGrid&&c.lightGrid.length===18*18*(H+2)*2?c.lightGrid:(c.lightGrid=new Uint8Array(18*18*(H+2)*2));
  const opacityGrid=c.opacityGrid&&c.opacityGrid.length===18*18*(H+2)?c.opacityGrid:(c.opacityGrid=new Uint8Array(18*18*(H+2)));
- const aoV=[];
-for(let k=0;k<4;k++){
- const cc=FC[f][k];
- const li=vertexLight(bx+x,y,bz+z,f,cc,readLight,readOpaque);
- const s=(b.emit||b.em)?1:SHD[f]*li[2];
- aoV.push(li[2]);
- V.push(
-  bx+x+cc[0],y+cc[1],bz+z+cc[2],
-  tu(tl,UVC[k][0]),tv(tl,UVC[k][1]),
-  tn_[0]*s,tn_[1]*s,tn_[2]*s,
-  li[0],li[1]
- );
-}
-  if(ly>=H)sky=dim===1?0:15;
-  else if(ly>=0){const lc=chunkAt(bx+lx,bz+lz);if(lc&&lc.sl){const li=((bx+lx)&15)+16*(((bz+lz)&15)+16*ly);sky=lc.sl[li];block=lc.bl[li];opaque=lightOpacity(lc.d[li])>=15?1:0}}
-  const cell=(lx+1)+18*((lz+1)+18*(ly+1)),gi=cell*2;lightGrid[gi]=sky;lightGrid[gi+1]=block;opacityGrid[cell]=opaque;
+  for(let ly=-1;ly<=H;ly++)
+ for(let lz=-1;lz<=16;lz++)
+ for(let lx=-1;lx<=16;lx++){
+  let sky=0,block=0,opaque=ly<0?1:0;
+
+  if(ly>=H){
+   sky=dim===1?0:15;
+  }else if(ly>=0){
+   const lc=chunkAt(bx+lx,bz+lz);
+   if(lc&&lc.sl){
+    const li=((bx+lx)&15)+16*(((bz+lz)&15)+16*ly);
+    sky=lc.sl[li];
+    block=lc.bl[li];
+    opaque=lightOpacity(lc.d[li])>=15?1:0;
+   }
+  }
+
+  const cell=(lx+1)+18*((lz+1)+18*(ly+1));
+  const gi=cell*2;
+  lightGrid[gi]=sky;
+  lightGrid[gi+1]=block;
+  opacityGrid[cell]=opaque;
  }
  const lightPair=[0,0],readLight=(wx,wy,wz)=>{const lx=wx-bx,lz=wz-bz;if(wy<0){lightPair[0]=lightPair[1]=0;return lightPair}if(wy>=H){lightPair[0]=dim===1?0:1;lightPair[1]=0;return lightPair}const gi=2*((lx+1)+18*((lz+1)+18*(wy+1)));lightPair[0]=lightGrid[gi]/15;lightPair[1]=lightGrid[gi+1]/15;return lightPair};
  const readOpaque=(wx,wy,wz)=>{if(wy<0)return true;if(wy>=H)return false;const cell=(wx-bx+1)+18*((wz-bz+1)+18*(wy+1));return opacityGrid[cell]===1};
