@@ -2179,8 +2179,38 @@ function cmd(s){s=(s||'').trim();if(!s)return;if(s[0]!='/'){msg('<Você> '+s);re
  
 /* ================= CARREGADORES (seus arquivos locais, sem rede) ================= */
 const GUI={};let skinUser=false;
-function pickFiles(accept,multi,dir,cb){const i=document.createElement('input');i.type='file';i.accept=accept;if(multi)i.multiple=true;if(dir)i.webkitdirectory=true;i.style.display='none';document.body.append(i);
- i.onchange=()=>{const f=[...i.files];i.remove();cb(f)};i.click()}
+function pickFiles(accept,multi,dir,cb){
+ const i=document.createElement('input');
+ i.type='file';
+ i.accept=accept;
+ if(multi)i.multiple=true;
+ if(dir)i.webkitdirectory=true;
+ i.style.display='none';
+ document.body.append(i);
+
+ let finished=false;
+
+ const finish=files=>{
+  if(finished)return;
+  finished=true;
+  window.removeEventListener('focus',onFocus);
+  i.remove();
+  cb(files);
+ };
+
+ const onFocus=()=>{
+  setTimeout(()=>{
+   if(!finished&&(!i.files||!i.files.length))
+    finish([]);
+  },500);
+ };
+
+ i.onchange=()=>finish([...i.files]);
+ i.oncancel=()=>finish([]);
+
+ window.addEventListener('focus',onFocus);
+ i.click();
+}
 const loadImg=f=>new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(f);im.onload=()=>{URL.revokeObjectURL(u);res(im)};im.onerror=rej;im.src=u});
 function paintTile(t,bm,over,fr,saveSource=true){const i=TN[t],ox=(i%TPR)*16,oy=(i/TPR|0)*16;ac.imageSmoothingEnabled=false;ac.clearRect(ox,oy,16,16);const frameH=bm.height>=bm.width?bm.width:bm.height;ac.drawImage(bm,0,(fr||0)*frameH,bm.width,frameH,ox,oy,16,16);
  if(t=='water'){const d=ac.getImageData(ox,oy,16,16);for(let k=0;k<d.data.length;k+=4){const a=d.data[k+3];if(a<8)continue;const lum=(d.data[k]*.3+d.data[k+1]*.59+d.data[k+2]*.11)/255;d.data[k]=Math.min(255,12+lum*35);d.data[k+1]=Math.min(255,55+lum*95);d.data[k+2]=Math.min(255,125+lum*125);d.data[k+3]=Math.min(185,a*.72)}ac.putImageData(d,ox,oy)}
