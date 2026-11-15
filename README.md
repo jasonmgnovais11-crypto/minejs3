@@ -2362,7 +2362,47 @@ function refreshChat(){chatLog.innerHTML='';for(const m of msgs.slice(-10)){cons
 function openChat(pref=''){chatOpen=true;chatBox.style.display='block';chatInput.value=pref;chatInput.focus();chatInput.setSelectionRange(chatInput.value.length,chatInput.value.length);document.exitPointerLock();refreshChat();updateChatSuggest()}
 function closeChat(){chatOpen=false;chatBox.style.display='none';chatSuggest.style.display='none';for(const k in keys)keys[k]=false}
 function updateChatSuggest(){const v=chatInput.value.trim(),q=v.startsWith('/')?v.slice(1).split(/\s/)[0].toLowerCase():'';const hits=q?chatCommands.filter(x=>x.startsWith(q)).slice(0,8):[];chatSuggest.innerHTML='';for(const h of hits){const d=document.createElement('div');d.textContent='/'+h;chatSuggest.append(d)}chatSuggest.style.display=hits.length?'block':'none'}
-chatInput.addEventListener('input',updateChatSuggest);chatInput.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){const v=chatInput.value.trim();if(v){chatHistory.push(v);chatHistPos=chatHistory.length;cmd(v);refreshChat()}closeChat();hc.requestPointerLock();e.preventDefault()}else if(e.key==='Escape'){closeChat();hc.requestPointerLock();e.preventDefault()}else if(e.key==='ArrowUp'){chatHistPos=Math.max(0,chatHistPos-1);chatInput.value=chatHistory[chatHistPos]||'';updateChatSuggest();e.preventDefault()}else if(e.key==='ArrowDown'){chatHistPos=Math.min(chatHistory.length,chatHistPos+1);chatInput.value=chatHistory[chatHistPos]||'';updateChatSuggest();e.preventDefault()}else if(e.key==='Tab'){const v=chatInput.value.trim(),q=v.startsWith('/')?v.slice(1).split(/\s/)[0].toLowerCase():'';const h=chatCommands.find(x=>x.startsWith(q));if(h){chatInput.value='/'+h+' ';updateChatSuggest()}e.preventDefault()}});
+chatInput.addEventListener('input',updateChatSuggest);
+chatInput.addEventListener('keydown',e=>{
+ e.preventDefault();
+ e.stopPropagation();
+ if(e.key==='Enter'){
+  const v=chatInput.value.trim();
+  if(!v)return;
+  chatHistory.push(v);
+  chatHistPos=chatHistory.length;
+  chatInput.value='';
+  try{
+   cmd(v);
+  }catch(err){
+   console.error('Erro ao executar comando:',err);
+   msg('Erro ao executar o comando: '+(err?.message||err));
+  }finally{
+   refreshChat();
+   closeChat();
+   try{hc.requestPointerLock()}catch(err){console.warn('Não foi possível recuperar o foco:',err)}
+  }
+ }else if(e.key==='Escape'){
+  closeChat();
+  try{hc.requestPointerLock()}catch(err){}
+ }else if(e.key==='ArrowUp'){
+  chatHistPos=Math.max(0,chatHistPos-1);
+  chatInput.value=chatHistory[chatHistPos]||'';
+  updateChatSuggest();
+ }else if(e.key==='ArrowDown'){
+  chatHistPos=Math.min(chatHistory.length,chatHistPos+1);
+  chatInput.value=chatHistory[chatHistPos]||'';
+  updateChatSuggest();
+ }else if(e.key==='Tab'){
+  const v=chatInput.value.trim();
+  const q=v.startsWith('/')?v.slice(1).split(/\s/)[0].toLowerCase():'';
+  const h=chatCommands.find(x=>x.startsWith(q));
+  if(h){
+   chatInput.value='/'+h+' ';
+   updateChatSuggest();
+  }
+ }
+});
 /* ================= INPUT ================= */
 const GAMEKEYS=new Set(['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ControlLeft','KeyE','KeyG','KeyQ','KeyT','KeyR','KeyK','KeyO','KeyV','F3','Slash',...'123456789'.split('').map(i=>'Digit'+i)]);
 on(document,'keydown',e=>{
