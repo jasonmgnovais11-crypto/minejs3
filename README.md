@@ -2236,7 +2236,38 @@ async function loadVanillaBedrock(){
  await Promise.all(Array.from({length:7},worker));uploadAtlas();gl.activeTexture(gl.TEXTURE0);for(const c of chunks.values())c.dirty=true;msg('Texturas Bedrock carregadas: '+loaded+' de '+tasks.length+'. '+(failed?'Algumas não existem nessa versão.':'Tudo encontrado!'));
 }
 function importSkin(){document.exitPointerLock();pickFiles('image/png',false,false,async fs=>{if(!fs[0])return;try{setSkin(await loadImg(fs[0]),true);skinUser=true;msg('Skin importada! Aperte V para ver seu personagem.')}catch(e){msg('Falha ao ler a skin')}})}
-function importPack(multi){document.exitPointerLock();msg('Selecione a pasta "textures" do seu Minecraft/resource pack...');pickFiles('image/png',multi,!multi,loadPack)}
+function importPack(multi) {
+    document.exitPointerLock();
+
+    if (multi) {
+        msg('Selecione os arquivos PNG do pacote...');
+        pickFiles('image/png', true, false, loadPack);
+        return;
+    }
+
+    if (confirm(
+        'Deseja importar um arquivo .mcpack/.zip?\n\n' +
+        'OK: escolher arquivo .mcpack/.zip\n' +
+        'Cancelar: escolher a pasta textures'
+    )) {
+        msg('Selecione o arquivo .mcpack ou .zip...');
+
+        pickFiles('.mcpack,.zip,application/zip',
+            false, false, fs => {
+                if (!fs[0]) return;
+
+                loadMcpack(fs[0]).catch(e => {
+                    console.error('Falha ao importar .mcpack:', e);
+                    msg('Falha ao importar pacote: ' + e.message);
+                });
+            }
+        );
+    } else {
+        msg('Selecione a pasta textures do resource pack...');
+
+        pickFiles('image/png', false, true, loadPack);
+    }
+}
  
 /* ================= HUD ================= */
 const UI={rects:[],scroll:0,held:null,dragStart:null,cont:null,mx:0,my:0,creativeCat:'building',craft2:Array(4).fill(null),craft3:Array(9).fill(null),catScroll:0,offhand:[null]};hud.imageSmoothingEnabled=false;
