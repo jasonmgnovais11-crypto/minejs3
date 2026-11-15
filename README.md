@@ -2400,38 +2400,116 @@ async function loadVanillaBedrock(){
  await Promise.all(Array.from({length:7},worker));uploadAtlas();gl.activeTexture(gl.TEXTURE0);for(const c of chunks.values())c.dirty=true;msg('Texturas Bedrock carregadas: '+loaded+' de '+tasks.length+'. '+(failed?'Algumas não existem nessa versão.':'Tudo encontrado!'));
 }
 function importSkin(){document.exitPointerLock();pickFiles('image/png',false,false,async fs=>{if(!fs[0])return;try{setSkin(await loadImg(fs[0]),true);skinUser=true;msg('Skin importada! Aperte V para ver seu personagem.')}catch(e){msg('Falha ao ler a skin')}})}
+
 function importPack(multi) {
     document.exitPointerLock();
 
-    if (multi) {
-        msg('Selecione os arquivos PNG do pacote...');
-        pickFiles('image/png', true, false, loadPack);
-        return;
+    const menu = document.createElement('div');
+    menu.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:999999;
+        background:rgba(0,0,0,.8);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-family:Arial;
+    `;
+
+    const panel = document.createElement('div');
+    panel.style.cssText = `
+        background:#222;
+        color:white;
+        padding:24px;
+        border-radius:12px;
+        width:min(340px,85vw);
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = 'IMPORTAR TEXTURAS';
+    title.style.textAlign = 'center';
+    panel.appendChild(title);
+
+    function close() {
+        menu.remove();
     }
 
-    if (confirm(
-        'Deseja importar um arquivo .mcpack/.zip?\n\n' +
-        'OK: escolher arquivo .mcpack/.zip\n' +
-        'Cancelar: escolher a pasta textures'
-    )) {
-        msg('Selecione o arquivo .mcpack ou .zip...');
+    function option(label, action) {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.style.cssText = `
+            padding:14px;
+            border:0;
+            border-radius:7px;
+            background:#444;
+            color:white;
+            font-size:15px;
+            cursor:pointer;
+        `;
 
-        pickFiles('.mcpack,.zip,application/zip',
-            false, false, fs => {
-                if (!fs[0]) return;
+        button.onclick = () => {
+            close();
+            action();
+        };
 
-                loadMcpack(fs[0]).catch(e => {
-                    console.error('Falha ao importar .mcpack:', e);
-                    msg('Falha ao importar pacote: ' + e.message);
-                });
+        panel.appendChild(button);
+    }
+
+    option('📁 Escolher pasta', () => {
+        msg('Selecione a pasta de texturas...');
+
+        pickFiles('image/png', false, true, fs => {
+            if (!fs.length) {
+                msg('Importação cancelada.');
+                return;
             }
-        );
-    } else {
-        msg('Selecione a pasta textures do resource pack...');
+            loadPack(fs);
+        });
+    });
 
-        pickFiles('image/png', false, true, loadPack);
-    }
+    option('📦 Escolher MCpack', () => {
+        msg('Selecione o arquivo MCpack...');
+
+        pickFiles('.mcpack', false, false, fs => {
+            if (!fs.length) {
+                msg('Importação cancelada.');
+                return;
+            }
+
+            loadMcpack(fs[0]).catch(e => {
+                console.error(e);
+                msg('Erro: ' + e.message);
+            });
+        });
+    });
+
+    option('🗜️ Escolher ZIP', () => {
+        msg('Selecione o arquivo ZIP...');
+
+        pickFiles('.zip,application/zip', false, false, fs => {
+            if (!fs.length) {
+                msg('Importação cancelada.');
+                return;
+            }
+
+            loadMcpack(fs[0]).catch(e => {
+                console.error(e);
+                msg('Erro: ' + e.message);
+            });
+        });
+    });
+
+    option('✖ Cancelar', () => {
+        msg('Importação cancelada.');
+    });
+
+    menu.appendChild(panel);
+    document.body.appendChild(menu);
 }
+
  
 /* ================= HUD ================= */
 const UI={rects:[],scroll:0,held:null,dragStart:null,cont:null,mx:0,my:0,creativeCat:'building',craft2:Array(4).fill(null),craft3:Array(9).fill(null),catScroll:0,offhand:[null]};hud.imageSmoothingEnabled=false;
