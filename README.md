@@ -2380,7 +2380,54 @@ async function loadPack(files){
   if(/\/(block|blocks)\//.test(path))mb[name]=f;else if(/\/(item|items)\//.test(path))mi[name]=f;else ma[name]=f;
  }
  let n=0;const over=mb['grass_block_side_overlay']?await createImageBitmap(mb['grass_block_side_overlay']):null;
- const blockAlias={water_still:['water_flow_grey','water_still_grey'],oak_sapling:['sapling_oak','oak_sapling'],spruce_sapling:['sapling_spruce','spruce_sapling'],birch_sapling:['sapling_birch','birch_sapling'],jungle_sapling:['sapling_jungle','jungle_sapling'],acacia_sapling:['sapling_acacia','acacia_sapling'],dark_oak_sapling:['sapling_roofed_oak','sapling_dark_oak','dark_oak_sapling'],mangrove_sapling:['sapling_mangrove','mangrove_propagule'],cherry_sapling:['sapling_cherry','cherry_sapling'],pale_oak_sapling:['sapling_pale_oak','pale_oak_sapling'],poplar_sapling:['sapling_poplar','poplar_sapling'],oak_planks:['planks_oak'],oak_log:['log_oak'],oak_log_top:['log_oak_top'],oak_leaves:['leaves_oak'],spruce_planks:['planks_spruce'],spruce_log:['log_spruce'],spruce_log_top:['log_spruce_top'],spruce_leaves:['leaves_spruce'],birch_planks:['planks_birch'],birch_log:['log_birch'],birch_log_top:['log_birch_top'],birch_leaves:['leaves_birch'],jungle_planks:['planks_jungle'],jungle_log:['log_jungle'],jungle_log_top:['log_jungle_top'],jungle_leaves:['leaves_jungle'],acacia_planks:['planks_acacia'],acacia_log:['log_acacia'],acacia_log_top:['log_acacia_top'],acacia_leaves:['leaves_acacia'],dark_oak_planks:['planks_big_oak','planks_dark_oak'],dark_oak_log:['log_big_oak','log_dark_oak'],dark_oak_log_top:['log_big_oak_top','log_dark_oak_top'],dark_oak_leaves:['leaves_big_oak','leaves_dark_oak']};
+const blockAlias={
+water_still:['water_flow_grey','water_still_grey'],
+oak_sapling:['sapling_oak','oak_sapling'],
+spruce_sapling:['sapling_spruce','spruce_sapling'],
+birch_sapling:['sapling_birch','birch_sapling'],
+jungle_sapling:['sapling_jungle','jungle_sapling'],
+acacia_sapling:['sapling_acacia','acacia_sapling'],
+dark_oak_sapling:['sapling_roofed_oak','sapling_dark_oak','dark_oak_sapling'],
+mangrove_sapling:['sapling_mangrove','mangrove_propagule'],
+cherry_sapling:['sapling_cherry','cherry_sapling'],
+pale_oak_sapling:['sapling_pale_oak','pale_oak_sapling'],
+poplar_sapling:['sapling_poplar','poplar_sapling'],
+oak_planks:['planks_oak'],
+oak_log:['log_oak'],
+oak_log_top:['log_oak_top'],
+oak_leaves:['leaves_oak','oak_leaves'],
+spruce_planks:['planks_spruce'],
+spruce_log:['log_spruce'],
+spruce_log_top:['log_spruce_top'],
+spruce_leaves:['leaves_spruce','spruce_leaves'],
+birch_planks:['planks_birch'],
+birch_log:['log_birch'],
+birch_log_top:['log_birch_top'],
+birch_leaves:['leaves_birch','birch_leaves'],
+jungle_planks:['planks_jungle'],
+jungle_log:['log_jungle'],
+jungle_log_top:['log_jungle_top'],
+jungle_leaves:['leaves_jungle','jungle_leaves'],
+acacia_planks:['planks_acacia'],
+acacia_log:['log_acacia'],
+acacia_log_top:['log_acacia_top'],
+acacia_leaves:['leaves_acacia','acacia_leaves'],
+dark_oak_planks:['planks_big_oak','planks_dark_oak'],
+dark_oak_log:['log_big_oak','log_dark_oak'],
+dark_oak_log_top:['log_big_oak_top','log_dark_oak_top'],
+dark_oak_leaves:['leaves_big_oak','leaves_dark_oak','dark_oak_leaves'],
+oak_trapdoor:['trapdoor_oak','oak_trapdoor'],
+spruce_trapdoor:['trapdoor_spruce','spruce_trapdoor'],
+birch_trapdoor:['trapdoor_birch','birch_trapdoor'],
+jungle_trapdoor:['trapdoor_jungle','jungle_trapdoor'],
+acacia_trapdoor:['trapdoor_acacia','acacia_trapdoor'],
+dark_oak_trapdoor:['trapdoor_dark_oak','trapdoor_big_oak','dark_oak_trapdoor'],
+mangrove_trapdoor:['trapdoor_mangrove','mangrove_trapdoor'],
+cherry_trapdoor:['trapdoor_cherry','cherry_trapdoor'],
+bamboo_trapdoor:['trapdoor_bamboo','bamboo_trapdoor'],
+crimson_trapdoor:['trapdoor_crimson','crimson_trapdoor'],
+warped_trapdoor:['trapdoor_warped','warped_trapdoor']
+};
  const itemAlias={wooden_pickaxe:['wood_pickaxe'],wooden_axe:['wood_axe'],wooden_shovel:['wood_shovel'],wooden_hoe:['wood_hoe'],wooden_sword:['wood_sword'],golden_pickaxe:['gold_pickaxe'],golden_axe:['gold_axe'],golden_shovel:['gold_shovel'],golden_hoe:['gold_hoe'],golden_sword:['gold_sword'],golden_helmet:['gold_helmet'],golden_chestplate:['gold_chestplate'],golden_leggings:['gold_leggings'],golden_boots:['gold_boots'],golden_apple:['apple_golden'],book:['book_normal'],water_bucket:['bucket_water'],lava_bucket:['bucket_lava'],bucket:['bucket_empty'],bow:['bow_standby'],clock:['clock_item'],cooked_beef:['beef_cooked'],beef:['beef_raw'],cooked_porkchop:['porkchop_cooked'],porkchop:['porkchop_raw'],cooked_chicken:['chicken_cooked'],chicken:['chicken_raw'],cooked_mutton:['mutton_cooked'],mutton:['mutton_raw'],rotten_flesh:['rotten_flesh'],flint_and_steel:['flint_and_steel'],fishing_rod:['fishing_rod_uncast'],boat_dark_oak:['boat_darkoak'],boat_mangrove:['mangrove_boat'],boat_cherry:['cherry_boat'],boat_pale_oak:['pale_oak_boat'],boat_poplar:['poplar_boat'],bamboo_raft:['bamboo_raft'],wooden_door:['door_wood'],iron_door:['door_iron'],redstone:['redstone_dust'],slime_ball:['slimeball']};
  const find=(file,isItem)=>{const m=isItem?mi:mb,aliases=(isItem?itemAlias:blockAlias)[file]||[];for(const nm of[file,...aliases])if(m[nm]||ma[nm])return m[nm]||ma[nm];const norm=file.replace(/^(block_|item_)/,'');for(const[k,v]of Object.entries(m))if(k.replace(/^(block_|item_)/,'')===norm)return v;for(const[k,v]of Object.entries(ma))if(k.replace(/^(block_|item_)/,'')===norm)return v;return null};
  for(const[t,file]of Object.entries(FILES)){const isItem=t.startsWith('i_'),f=find(file,isItem);if(!f)continue;try{const bm=await createImageBitmap(f);paintTile(t,bm,isItem?null:over);if((t=='water'||t=='lava'||t=='portal')&&bm.height>bm.width){PK.add(t);ANIM[t]={bm,n:Math.floor(bm.height/bm.width)}}else if(t=='water'||t=='lava'){PK.add(t);delete ANIM[t]}n++}catch(e){}}
