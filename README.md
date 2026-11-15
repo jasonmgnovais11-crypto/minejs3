@@ -2208,6 +2208,140 @@ function loadJavaGui(){
  }
 }
 loadJavaGui();
+/* Importador de arquivos .mcpack e .zip */
+async function extractMcpackPngs(file) {
+    const bytes = await file.arrayBuffer();
+    const view = new DataView(bytes);
+    const u8 = new Uint8Array(bytes);
+
+    const min = Math.max(0, bytes.byteLength - 65557);
+    let eocd = -1;
+
+    for (let p = bytes.byteLength - 22; p >= min; p--) {
+        if (view.getUint32(p, true) === 0x06054b50) {
+            eocd = p;
+            break;
+        }
+    }
+
+    if (eocd < 0)
+        throw new Error('Arquivo ZIP inválido.');
+
+    const disk = view.getUint16(eocd + 4, true);
+    const cdDisk = view.getUint16(eocd + 6, true);
+
+    if (disk !== 0 || cdDisk !== 0)
+        throw new Error('ZIP dividido não suportado.');
+
+    const count = view.getUint16(eocd + 10, true);
+    const cdSize = view.getUint32(eocd + 12, true);
+    const cdOffset = view.getUint32(eocd + 16, true);
+
+    if (count === 0xffff || cdSize === 0xffffffff ||
+        cdOffset === 0xffffffff)
+        throw new Error('ZIP64 ainda não suportado.');
+
+    if (cdOffset + cdSize > bytes.byteLength)
+        throw new Error('ZIP incompleto.');
+
+    const files = [];
+    let p = cdOffset;
+
+    for (let index = 0; index < count; index++) {
+        if (p + 46 > bytes.byteLength ||
+            view.getUint32(p, true) !== 0x02014b50)
+            throw new Error('Entrada ZIP inválida.');
+
+        const flags = view.getUint16(p + 8, true);
+        const method = view.getUint16(p + 10, true);
+        const compressedSize = view.getUint32(p + 20, true);
+        const uncompressedSize = view.getUint32(p + 24, true);
+
+        const nameLength = view.getUint16(p + 28, true);
+        const extraLength = view.getUint16(p + 30, true);
+        const commentLength = view.getUint16(p + 32, true);
+        const localOffset = view.getUint32(p + 42, true);
+
+        const nameStart = p + 46;
+        const nameEnd = nameStart + nameLength;
+
+        const path = new TextDecoder()
+            .decode(u8.subarray(nameStart, nameEnd))
+            .replaceAll('\\', '/')
+            .replace(/^\/+/, '');
+
+        p = nameEnd + extraLength + commentLength;
+
+        if (!/\.png$/i.test(path)) continue;
+
+        if (flags & 1)
+            throw new Error('Pacote protegido por senha.');
+
+        if (localOffset + 30 > bytes.byteLength ||
+            view.getUint32(localOffset, true) !== 0x04034b50)
+            throw new Error('Cabeçalho inválido.');
+
+        const localName = view.getUint16(localOffset + 26, true);
+        const localExtra = view.getUint16(localOffset + 28, true);
+
+        const start = localOffset + 30 + localName + localExtra;
+        const end = start + compressedSize;
+
+        if (end > bytes.byteLength)
+            throw new Error('Imagem incompleta.');
+
+        const compressed = new Blob([
+            u8.slice(start, end)
+        ]);
+
+        let png;
+
+        if (method === 0) {
+            png = compressed;
+        } else if (method === 8) {
+            if (typeof DecompressionStream === 'undefined')
+                throw new Error('Navegador sem suporte à descompactação.');
+
+            png = await new Response(
+                compressed.stream().pipeThrough(
+                    new DecompressionStream('deflate-raw')
+                )
+            ).blob();
+        } else {
+            throw new Error('Método ZIP não suportado: ' + method);
+        }
+
+        if (uncompressedSize && png.size !== uncompressedSize)
+            throw new Error('Tamanho de imagem inválido: ' + path);
+
+        const imageFile = new File(
+            [png],
+            path.split('/').pop(),
+            { type: 'image/png' }
+        );
+
+        Object.defineProperty(imageFile, 'webkitRelativePath', {
+            value: path
+        });
+
+        files.push(imageFile);
+    }
+
+    if (!files.length)
+        throw new Error('Nenhuma textura PNG encontrada no pacote.');
+
+    return files;
+}
+
+async function loadMcpack(file) {
+    msg('Lendo pacote .mcpack...');
+
+    const files = await extractMcpackPngs(file);
+
+    msg('Pacote descompactado: ' + files.length + ' imagens.');
+
+    await loadPack(files);
+}
 async function loadPack(files){
  const mb={},mi={},ma={},gi={},en={};
  for(const f of files){const path='/'+(f.webkitRelativePath||f.name).toLowerCase().replace(/\\/g,'/');if(!/\.png$/.test(path))continue;const name=path.split('/').pop().slice(0,-4);
